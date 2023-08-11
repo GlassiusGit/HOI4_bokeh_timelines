@@ -5,36 +5,43 @@ from bokeh import events
 from datetime import datetime as dt, timedelta as td
 
 
-p = figure(width_policy="max",
-           width=800,
-           height=600,
-           tools="pan, wheel_zoom, reset",
-           x_axis_type="datetime")
-p.y_range = Range1d(-4, 2.6)
-p.x_range = Range1d(dt(1935, 12, 31), dt(1937,12,1))
-
-original_size = p.x_range.end - p.x_range.start
-length35 = td(days=35)
-
-vanilla = pd.read_csv("NSB_original.csv", index_col=0)
-
 focus_color={
     "politics": "lightgray",
     "marine": "lightblue",
     "economy": "bisque"}
 
-starts = [dt(1936, 1, 1)]
-for duration in vanilla["Duration"][:]:
-    starts.append(starts[-1]+td(days=duration))
+
+
+vanilla = pd.read_csv("NSB_original.csv", index_col=0)
+
+starts = []
+for i, duration in enumerate(vanilla["Start"]):
+    if not pd.isna(vanilla.loc[i, "Start"]):
+        starts.append(dt.fromisoformat(vanilla.loc[i, "Start"]))
+    else:
+        starts.append(starts[-1]+td(days=vanilla.loc[i-1, "Duration"]))
 date_range = []
-for i, start in enumerate(starts[:-1]):
-    date_range.append(start.isoformat()[:10] + " to " + (starts[i+1] - td(days=1)).isoformat()[:10])
+for i, start in enumerate(starts):
+    date_range.append(start.isoformat()[:10] + " to " + (start + td(days=vanilla.loc[i, "Duration"])).isoformat()[:10])
+ys = vanilla["Y"]
+
+p = figure(width_policy="max",
+           width=800,
+           height=600,
+           tools="pan, wheel_zoom, reset",
+           x_axis_type="datetime")
+p.y_range = Range1d(-4, 4)
+p.x_range = Range1d(starts[0] - td(days=1), starts[0] + td(days=2*365.25))
+
+original_size = p.x_range.end - p.x_range.start
+length35 = td(days=35)
+
 
 focuses = vanilla["Focus"]
 focuses = ["\n".join(focus.split()) for focus in focuses]
 vanilla_source = ColumnDataSource({
-    "x": starts[:-1],
-    "y":[1]*len(vanilla),
+    "x": starts,
+    "y": ys,
     "width": [td(days=duration) for duration in vanilla["Duration"]],
     "height": [0.9]*len(vanilla),
     "color": [focus_color[focus_type] for focus_type in vanilla["Type"]],
