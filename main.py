@@ -1,6 +1,6 @@
 import pandas as pd
 from bokeh.plotting import figure, show
-from bokeh.models import ColumnDataSource, Text, CustomJS, Block, HoverTool, Range1d
+from bokeh.models import ColumnDataSource, Text, CustomJS, Block, HoverTool, Range1d, Circle
 from bokeh import events
 from datetime import datetime as dt, timedelta as td
 
@@ -8,7 +8,8 @@ from datetime import datetime as dt, timedelta as td
 focus_color={
     "politics": "lightgray",
     "marine": "lightblue",
-    "economy": "bisque"}
+    "economy": "bisque"
+    }
 
 
 
@@ -29,7 +30,8 @@ p = figure(width_policy="max",
            width=800,
            height=600,
            tools="pan, wheel_zoom, reset",
-           x_axis_type="datetime")
+           x_axis_type="datetime"
+           )
 p.y_range = Range1d(-4, 4)
 p.x_range = Range1d(starts[0] - td(days=1), starts[0] + td(days=2*365.25))
 
@@ -59,25 +61,28 @@ glyph_block = Block(
     fill_color="color")
 
 font_size = int(length35 / original_size * p.width / 14 * 2 * 1.6);
-glyph_text = Text(
+glyph_block_text = Text(
     x="x",
     y="y",
     text="focus",
     text_font_size = f"{font_size}px",
-    text_font = "text_font")
+    text_font = "text_font"
+    )
 
 block_renderer = p.add_glyph(vanilla_source, glyph_block)
-text_renderer = p.add_glyph(vanilla_source, glyph_text)
+glyph_text_renderer = p.add_glyph(vanilla_source, glyph_block_text)
 
 
-callback_scaling_text = CustomJS(args=dict(
-        glyph_text=glyph_text,
+callback_scaling_text = CustomJS(
+    args=dict(
+        glyph_block_text=glyph_block_text,
         original_size=original_size,
         p=p,
-        font_size=font_size),
+        font_size=font_size
+        ),
     code="""
 const new_size = Math.floor(original_size / (p.x_range.end - p.x_range.start)  * font_size);
-glyph_text.text_font_size = new_size + "px";
+glyph_block_text.text_font_size = new_size + "px";
 """)
 p.x_range.js_on_change('end', callback_scaling_text)
 p.x_range.js_on_change('start', callback_scaling_text)
@@ -86,6 +91,42 @@ block_hover = HoverTool(renderers=[block_renderer], tooltips=[("", "@focus"),
                                                               ("", "@date_range"),
                                                               ("", "@hover_text")])
 p.add_tools(block_hover)
+
+real = pd.read_csv("real_events.csv", index_col=0)
+events = list(real["Event"])
+dates = [dt.fromisoformat(date) for date in real["Date"]]
+
+circle_colors = []
+connection_colors = []
+real_connections = []
+for i, event in enumerate(events):
+    focus = real.loc[i, "Focus"]
+    try:
+        original_id = list(vanilla["Focus"]).index(focus)
+    except ValueError:
+        circle_colors.append("black")
+        continue
+    color = focus_color[vanilla.loc[original_id, "Type"]]
+    circle_colors.append(color)
+    connection_colors.append(color)
+    
+    
+circle_source = ColumnDataSource({
+    "x": dates,
+    "y": [-1] * len(events),
+    "color": circle_colors
+    })
+
+glyph_circle = Circle(
+    x="x",
+    y="y",
+    radius=td(days=3),
+    radius_units="data",
+    radius_dimension="x",
+    fill_color="color"
+    )
+
+glyph_circle_renderer = p.add_glyph(circle_source, glyph_circle)
 
 p.toolbar.active_scroll = "auto"
 
