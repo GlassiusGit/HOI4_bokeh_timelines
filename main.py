@@ -48,7 +48,7 @@ vanilla_source = ColumnDataSource({
     "height": [0.9]*len(vanilla),
     "color": [focus_color[focus_type] for focus_type in vanilla["Type"]],
     "focus": focuses,
-    "hover_text": vanilla["Hovertext"],
+    "hover_block_text": vanilla["Hovertext"],
     "text_font": ["courier"]*len(vanilla),
     "date_range" : date_range
     })
@@ -74,7 +74,7 @@ glyph_text_renderer = p.add_glyph(vanilla_source, glyph_block_text)
 
 block_hover = HoverTool(renderers=[block_renderer], tooltips=[("", "@focus"),
                                                               ("", "@date_range"),
-                                                              ("", "@hover_text")])
+                                                              ("", "@hover_block_text")])
 p.add_tools(block_hover)
 
 real = pd.read_csv("real_events.csv", index_col=0)
@@ -108,7 +108,9 @@ circle_source = ColumnDataSource({
     "events": events,
     "text_font": ["courier"]*len(events),
     "angles": [-3.14*1/10] * len(events),
-    "text_baselines": ["top"] * len(events)
+    "text_baselines": ["top"] * len(events),
+    "dates_circle": list(real["Date"]),
+    "hover_circle_text": list(real["Hovertext"])
     })
 
 glyph_circle = Circle(
@@ -132,6 +134,11 @@ glyph_circle_text = Text(
 
 glyph_circle_renderer = p.add_glyph(circle_source, glyph_circle)
 glyph_circle_text_rendered = p.add_glyph(circle_source, glyph_circle_text)
+
+circle_hover = HoverTool(renderers=[glyph_circle_renderer], tooltips=[("", "@events"),
+                                                              ("", "@dates_circle"),
+                                                              ("", "@hover_circle_text")])
+p.add_tools(circle_hover)
 
 for i, connection in enumerate(connections):
     connection_source = ColumnDataSource({
