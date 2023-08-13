@@ -1,6 +1,6 @@
 import pandas as pd
 from bokeh.plotting import figure, show
-from bokeh.models import ColumnDataSource, Text, CustomJS, Block, HoverTool, Range1d, Circle
+from bokeh.models import ColumnDataSource, Text, CustomJS, Block, HoverTool, Range1d, Circle, Line
 from bokeh import events
 from datetime import datetime as dt, timedelta as td
 
@@ -83,7 +83,7 @@ dates = [dt.fromisoformat(date) for date in real["Date"]]
 
 circle_colors = []
 connection_colors = []
-real_connections = []
+connections = []
 for i, event in enumerate(events):
     focus = real.loc[i, "Focus"]
     try:
@@ -94,6 +94,10 @@ for i, event in enumerate(events):
     color = focus_color[vanilla.loc[original_id, "Type"]]
     circle_colors.append(color)
     connection_colors.append(color)
+    connections.append(((starts[original_id] + td(days=1) * vanilla.loc[original_id, "Duration"],
+                         dt.fromisoformat(real.loc[i, "Date"])),
+                        (vanilla.loc[original_id, "Y"], -0.9)
+                       ))
     
 circle_radius = td(days=3)
 circle_source = ColumnDataSource({
@@ -126,9 +130,22 @@ glyph_circle_text = Text(
     text_baseline="text_baselines"
     )
 
-
 glyph_circle_renderer = p.add_glyph(circle_source, glyph_circle)
 glyph_circle_text_rendered = p.add_glyph(circle_source, glyph_circle_text)
+
+for i, connection in enumerate(connections):
+    connection_source = ColumnDataSource({
+        "x": connection[0],
+        "y": connection[1],
+        })
+    glyph_connection = Line(
+        x="x",
+        y="y",
+        #line_color=connection_colors[i],
+        line_color="black",
+        line_width=1
+        )
+    p.add_glyph(connection_source, glyph_connection)
 
 p.toolbar.active_scroll = "auto"
 
